@@ -3,6 +3,19 @@
 
 
 {{ form_start(form) }}
-    {{ form_widget(form) }}
-    <button class="btn btn-success">{{ button_label|default('Save') }}</button>
+    {{form_row(form.title)}}
+    {{form_row(form.description)}}
+    {{form_row(form.category)}}
+    {{form_row(form.picture)}}
+ 
+{% if article.picture %}
+<div>
+<img src="{{ asset('/uploads/articles/' ~ article.picture) }}" class="card-img-top" alt="Image actuelle" style="max-width: 200px; max-height: 200px; object-fit: cover;">
+</div>
+
+{% endif %}
+
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">{{ button_label|default('Save') }}</button>
+    </div>
 {{ form_end(form) }}

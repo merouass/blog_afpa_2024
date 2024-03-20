@@ -27,7 +27,15 @@
 
             {% if app.user is not null  %}
                 {{ include('comment/index.html.twig') }}
-            {% endif %}
+
+                 {% endif %}
+
+                {% for comment in article.comments %}
+                <p> {{comment.message}} </p>
+                 <p> {{comment.user}} - {{comment.date | date("d-m-Y")}} </p>
+
+
+            {% endfor %}
     </div>
 
 
