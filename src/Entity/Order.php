@@ -32,6 +32,9 @@ class Order
     #[ORM\OneToMany(targetEntity: OrderDetails::class, mappedBy: 'orderNumber')]
     private Collection $orderDetails;
 
+    #[ORM\Column(options: ["default" => 0])]
+    private ?bool $pdf = null;
+
     public function __construct()
     {
         $this->orderDetails = new ArrayCollection();
@@ -116,6 +119,18 @@ class Order
                 $orderDetail->setOrderNumber(null);
             }
         }
+
+        return $this;
+    }
+
+    public function isPdf(): ?bool
+    {
+        return $this->pdf;
+    }
+
+    public function setPdf(bool $pdf): static
+    {
+        $this->pdf = $pdf;
 
         return $this;
     }

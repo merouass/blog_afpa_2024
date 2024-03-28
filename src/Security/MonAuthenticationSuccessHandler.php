@@ -27,7 +27,7 @@ class MonAuthenticationSuccessHandler implements AuthenticationSuccessHandlerInt
         }
 
         // Sinon, redirection vers la page par défaut
-        return $this->httpUtils->createRedirectResponse($request, 'route_par_defaut');
+        return $this->httpUtils->createRedirectResponse($request, 'app_home');
     }
 }
 

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Order;
 use App\Entity\OrderDetails;
+use App\Repository\OrderDetailsRepository;
 use App\Repository\OrderRepository;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -44,7 +45,7 @@ class PaymentController extends AbstractController
             $order->setStatus('En cours');
             $order->setUser($this->getUser());
             $order->setDate(new \DateTime);
-
+            $order->setPdf(false);
             $entityManager->persist($order);
             $entityManager->flush();
 
@@ -57,10 +58,10 @@ class PaymentController extends AbstractController
 
                 $entityManager->persist($orderDetails);
                 $entityManager->flush();
-
-                $this->redirectToRoute("sucess");
-
             }
+
+            return $this->redirectToRoute("success");
+
         }
 
         $session = $request->getSession();
@@ -72,64 +73,97 @@ class PaymentController extends AbstractController
     }
 
     #[Route('/success', name: 'success')]
-    public function success(MailerInterface $mailer): Response
+    public function success(MailerInterface $mailer,
+    OrderRepository $orderRepository,
+    OrderDetailsRepository $orderDetailsRepository,
+    EntityManagerInterface $entityManagerInterface,
+    Request $request): Response
     {
 
-        // le numéro de la dernière facture pour le user
+        $idUser = $this->getUser()->getId();
+        // le numéro de la dernière order pour le user
+        $order = $orderRepository->findOneBy(['user' => $idUser], ['id' => 'DESC']);
         // le montant total
         // les produits achetés
         // => récupérer la dernière facture insérée en bdd pour le user
         // et tous les orderDetails liés à cette facture
 
-        // on génera le PDF
-        $pdfOptions = new Options();
-        $pdfOptions->set(['defaultFont' => 'Arial', 'enable_remote' => true]);
-        // 2- On crée le pdf avec les options
-        $dompdf = new Dompdf($pdfOptions);
+        if(!$order->isPdf()) {
 
-        // 3- On prépare le twig qui sera transformée en pdf
-        $html = $this->renderView('invoice/index.html.twig', [
-            'Amount' => 10,
-            'invoiceNumber' => 'F1093',
-            'date' => new \DateTime(),
-            'products' => []
-        ]);
+            // on génera le PDF
+            $pdfOptions = new Options();
+            $pdfOptions->set(['defaultFont' => 'Arial', 'enable_remote' => true]);
+            // 2- On crée le pdf avec les options
+            $dompdf = new Dompdf($pdfOptions);
 
-        // 4- On transforme le twig en pdf avec les options de format
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
+            $invoiceNumber = $order->getId();
+    
+            // 3- On prépare le twig qui sera transformée en pdf
+            $html = $this->renderView('invoice/index.html.twig', [
+                'user' => $this->getUser(),
+                'amount' => $order->getAmount(),
+                'invoiceNumber' => $invoiceNumber,
+                'date' => new \DateTime(),
+                'orderDetails' => $orderDetailsRepository->findBy(['orderNumber' => $order->getId()])
+            ]);
+    
+            // 4- On transforme le twig en pdf avec les options de format
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+    
+            // 5- On enregistre le pdf dans une variable
+            $dompdf->render();
+            $finalInvoice = $dompdf->output();
+    
+            if (!file_exists('uploads/factures')) {
+                mkdir('uploads/factures');
+            }
 
-        // 5- On enregistre le pdf dans une variable
-        $dompdf->render();
-        $finalInvoice = $dompdf->output();
+            $pathInvoice = "./uploads/factures/" . $invoiceNumber . "_" . $this->getUser()->getId() . ".pdf";
+            file_put_contents($pathInvoice, $finalInvoice);
+            // on l'enverra par mail la facture
+            // on affichera une page de succès
+    
+            $email = (new TemplatedEmail())
+                ->from($this->getParameter('app.mailAddress'))
+                ->to($this->getUser()->getEmail())
+                //->bcc('bcc@example.com')
+                //->replyTo('fabien@example.com')
+                //->priority(Email::PRIORITY_HIGH)
+                ->subject("Facture Blog Afpa 2024")
+                // ->html('<p> ' . $contact->getMessage() . ' </p>');
+                ->htmlTemplate("invoice/email.html.twig")
+                ->context([
+                    'user' => $this->getUser(),
+                    'amount' => $order->getAmount(),
+                    'invoiceNumber' => $invoiceNumber,
+                    'date' => new \DateTime(),
+                    'orderDetails' => $orderDetailsRepository->findBy(['orderNumber' => $order->getId()])
+                ])
+                ->attach($finalInvoice, sprintf('facture-' . $invoiceNumber . 'blog-afpa.pdf', date("Y-m-d")));
+    
+            $mailer->send($email);
+    
+            $order->setPdf(true);
+            $entityManagerInterface->persist($order);
+            $entityManagerInterface->flush();
+    
+            // vider le panier
+            $session = $request->getSession();
+            $session->set('cart', []);        
+    
+            return $this->render("payment/success.html.twig", [
+                'user' => $this->getUser(),
+                'amount' => $order->getAmount(),
+                'invoiceNumber' => $invoiceNumber,
+                'date' => new \DateTime(),
+                'orderDetails' => $orderDetailsRepository->findBy(['orderNumber' => $order->getId()])
+            ]);
 
-        if (!file_exists('uploads/facture')) {
-            mkdir('uploads/factures');
+        } else {
+
+            return $this->redirectToRoute('app_home');
         }
-
-        $invoiceNumber = 5;
-        $pathInvoice = "./uploads/factures/" . $invoiceNumber . "_" . $this->getUser()->getId() . ".pdf";
-        file_put_contents($pathInvoice, $finalInvoice);
-        // on l'enverra par mail la facture
-        // on affichera une page de succès
-
-        $email = (new TemplatedEmail())
-            ->from($this->getParameter('app.mailAddress'))
-            ->to($this->getUser()->getEmail())
-            //->bcc('bcc@example.com')
-            //->replyTo('fabien@example.com')
-            //->priority(Email::PRIORITY_HIGH)
-            ->subject("Facture Blog Afpa 2024")
-            // ->html('<p> ' . $contact->getMessage() . ' </p>');
-            ->htmlTemplate("invoice/email.html.twig")
-            ->attach($finalInvoice, sprintf('facture-' . $invoiceNumber . 'blog-afpa.pdf', date("Y-m-d")));
-
-        $mailer->send($email);
-
-        return $this->render("payment/success.html.twig", [
-            'invoiceNumber' => $invoiceNumber,
-            'amount' => 100,
-        ]);
 
     }
 }

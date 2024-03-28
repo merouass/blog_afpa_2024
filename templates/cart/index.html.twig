@@ -50,6 +50,8 @@ th {
             <thead>
                 <tr>
                     <th>Article</th>
+                    <th> Nom </th>
+                    <th>description</th>
                     <th>Quantité</th>
                     <th>Prix Unitaire</th>
                     <th>Total</th>
@@ -58,15 +60,20 @@ th {
             <tbody>
 
             {% for i in 0..(cartItems.id|length - 1) %}
+               
                 <tr>
                     <td>{{ cartItems.id[i] }}</td>
-                    <td>{{ cartItems.name[i] }}</td>
-                    <td>{{ cartItems.description[i] }}</td>
-                    <td><img style="width:100px" src="{{ asset('uploads/products/' ~ cartItems.picture[i]) }}" alt="Image de {{ cartItems.name[i] }}" /></td>
-                    <td>{{ cartItems.price[i] }} €</td>
+                       <td>{{ cartItems.name[i] }}</td>
+                    <td>{{ cartItems.description[i] }} </td>
                     <td>{{ cartItems.quantity[i] }}</td>
+                   
+                    <td><img style="width:100px" src="{{ asset('uploads/products/' ~ cartItems.picture[i]) }}" alt="Image de {{ cartItems.name[i] }}" /></td>
+                     <td>{{ cartItems.price[i] }}€</td>
+                   
                 </tr>
             {% endfor %}
+                    
+                   
 
             </tbody>
         </table>

@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Translation\TranslatableMessage;
 
 class HomeController extends AbstractController
 {
@@ -23,6 +24,7 @@ class HomeController extends AbstractController
     PaginatorInterface $paginator,
     Request $request): Response
     {
+        $message    = new TranslatableMessage('symfony is great');
 
         $articles = $paginator->paginate(
             $articleRepository->findAll(), /* query NOT result */
@@ -31,6 +33,7 @@ class HomeController extends AbstractController
         );
 
         return $this->render('home/index.html.twig', [
+            'message' =>$message,
             'categories' => $categoryRepository->findAll(),
             'articles' => $articles,
 
