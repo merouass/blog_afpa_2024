@@ -33,6 +33,15 @@ class Product
     #[ORM\OneToMany(targetEntity: OrderDetails::class, mappedBy: 'product')]
     private Collection $orderDetails;
 
+    #[ORM\Column(length: 255)]
+    private ?string $PriceIdStripe = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $PriceStripe = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $StripePrice = null;
+
     public function __construct()
     {
         $this->orderDetails = new ArrayCollection();
@@ -129,6 +138,42 @@ class Product
                 $orderDetail->setProduct(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getPriceIdStripe(): ?string
+    {
+        return $this->PriceIdStripe;
+    }
+
+    public function setPriceIdStripe(string $PriceIdStripe): static
+    {
+        $this->PriceIdStripe = $PriceIdStripe;
+
+        return $this;
+    }
+
+    public function getPriceStripe(): ?string
+    {
+        return $this->PriceStripe;
+    }
+
+    public function setPriceStripe(string $PriceStripe): static
+    {
+        $this->PriceStripe = $PriceStripe;
+
+        return $this;
+    }
+
+    public function getStripePrice(): ?string
+    {
+        return $this->StripePrice;
+    }
+
+    public function setStripePrice(string $StripePrice): static
+    {
+        $this->StripePrice = $StripePrice;
 
         return $this;
     }
