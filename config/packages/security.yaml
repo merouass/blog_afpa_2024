@@ -37,6 +37,8 @@ security:
     access_control:
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/profile, roles: ROLE_USER }
+        - { path: ^/checkout, roles: ROLE_USER }
+        - { path: ^/payment/success, roles: ROLE_USER }
 
 when@test:
     security:

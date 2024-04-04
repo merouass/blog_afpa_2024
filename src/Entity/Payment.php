@@ -18,7 +18,7 @@ class Payment
     private ?user $user = null;
 
     #[ORM\Column]
-    private ?int $sessionId = null;
+    private ?string $sessionId = null;
 
     #[ORM\Column]
     private ?bool $paymentStatus = null;
@@ -49,12 +49,12 @@ class Payment
         return $this;
     }
 
-    public function getSessionId(): ?int
+    public function getSessionId(): ?string
     {
         return $this->sessionId;
     }
 
-    public function setSessionId(int $sessionId): static
+    public function setSessionId(string $sessionId): static
     {
         $this->sessionId = $sessionId;
 

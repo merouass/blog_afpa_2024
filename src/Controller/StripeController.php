@@ -24,22 +24,28 @@ class StripeController extends AbstractController
 {
     #[Route('/checkout', name: 'app_stripe_checkout')]
     public function checkout(Request $request, EntityManagerInterface $entityManager): Response
-    {
+    { 
+
+
+        $productsInSession = $request->getSession()->get('cart');
+
+        if(!empty( $productsInSession)) {
 
         // Définir la clé secrète de Stripe
         // récupérer ma session stripe via ma clé stripe
         \Stripe\Stripe::setApiKey($this->getParameter('app.stripe_key'));
 
         $productsInSession = $request->getSession()->get('cart');
-
-        dd($productsInSession);
-
         $products = [];
 
-        // [
-        //     "price" => "",
-        //     "quantity" => 1
-        // ]
+        for ($i = 0; $i < count ($productsInSession["id"]); $i++) {
+
+            $products[] = [
+                "price" =>  $productsInSession["priceIdStripe"] [$i],
+                "quantity" =>  $productsInSession["quantity"] [$i]
+            ]; 
+        }
+
 
         // afficher un formulaire de paiement avec une session de paiement stripe
         $session = \Stripe\Checkout\Session::create([
@@ -49,7 +55,7 @@ class StripeController extends AbstractController
                 $products
             ],
             'allow_promotion_codes' => true,
-            'customer_email' => "sam@gmail.com",
+            'customer_email' => "maryammejri1@gmail.com",
             'mode' => 'payment',
             'success_url' => $this->generateUrl('app_stripe_success', [], UrlGeneratorInterface::ABSOLUTE_URL),
             'cancel_url' => $this->generateUrl('app_stripe_error', [], UrlGeneratorInterface::ABSOLUTE_URL),
@@ -64,7 +70,7 @@ class StripeController extends AbstractController
             ->setSessionID($session['id'])
             ->setPaymentStatus($session['payment_status'])
             ->setDate(new \DateTime())
-            ->setSuccessPageExpired(false)
+            ->setSuccesPageExpired(false)
             ->setAmount($session['amount_total'] / 100);
         $entityManager->persist($payment);
         $entityManager->flush();
@@ -72,6 +78,9 @@ class StripeController extends AbstractController
         return $this->redirect($session->url, 303);
 
     }
+    else { return $this->redirectToRoute('app_home');
+    
+    }}
 
     #[Route('/payment/success', name: 'app_stripe_success')]
     public function success(
@@ -89,7 +98,7 @@ class StripeController extends AbstractController
         $user = $this->getUser();
 
         // récupérer le dernier paiement réalisé par le user
-        $lastPayment = $paymentRepository->findLastPayementByUser($user->getId());
+        $lastPayment = $paymentRepository->findLastPaymentByUser($user->getId());
 
         if ($lastPayment) {
 
@@ -102,12 +111,12 @@ class StripeController extends AbstractController
             // ca me permet de savoir que le dernier paiement effectué par le user
             // n'est pas encore arrivé sur la page success
             // et que donc je peux créer mes factures et mes commandes
-            if ($lastPayment->getSuccessPageExpired() == false && $session['customer']) {
+            if ($lastPayment->isSuccesPageExpired() == false && $session['payment_status'] == "paid") {
 
                 // Récupération de toutes les informations liés à la session et donc au dernier paiement
-                $subscription = \Stripe\Subscription::retrieve($session['subscription']);
+                $subscription = \Stripe\PaymentIntent::retrieve($session['payment_intent']);
                 // $invoice = \Stripe\Invoice::retrieve($subscription['latest_invoice']);
-                $paymentMethod = \Stripe\PaymentMethod::retrieve($subscription['default_payment_method']);
+                $paymentMethod = \Stripe\PaymentMethod::retrieve($subscription['payment_method']);
 
                 // je mets à jour mon paiement
 
@@ -117,8 +126,8 @@ class StripeController extends AbstractController
                 $lastPayment->setPaymentStatus($session['payment_status'])
                     // ->setCustomerStripeId($session['customer'])
                     // ->setSubscriptionId($session['subscription'])
-                    ->setPaymentMethodId($paymentMethod['id'])
-                    ->setSuccessPageExpired(true); // On paramètre ici la valeur true ce qui permettra d'éviter à un utilisateur de retourner sur cette page une deuxième fois.
+              
+                    ->setSuccesPageExpired(true); // On paramètre ici la valeur true ce qui permettra d'éviter à un utilisateur de retourner sur cette page une deuxième fois.
                 $entityManager->persist($lastPayment);
 
 
@@ -145,7 +154,7 @@ class StripeController extends AbstractController
                 // pour chaque élément de mon panier je créé un détail de commande
                 for ($i = 0; $i < count($cart["id"]); $i++) {
                     $orderDetails = new OrderDetails;
-                    $orderDetails->setOrderNumber($order->getId());
+                    $orderDetails->setOrderNumber($order);
                     $orderDetails->setProduct($productRepository->find($cart["id"][$i]));
                     $orderDetails->setQuantity($cart["id"][$i]);
 
@@ -226,8 +235,11 @@ class StripeController extends AbstractController
                     // ]);
 
                     return $this->render('stripe/success.html.twig', [
-                        'invoiceNumber' => $order->getId(),
-                        'paymentMethod' => $paymentMethod['card']['brand'],
+                        'user' => $this->getUser(),
+                        'amount' => $order->getAmount(),
+                        'invoiceNumber' => $invoiceNumber,
+                        'date' => new \DateTime(),
+                        'orderDetails' => $orderDetailsRepository->findBy(['orderNumber' => $order->getId()])
                     ]);
         
                 }
